@@ -1,3 +1,4 @@
+use crate::tags::*;
 use crate::types::*;
 
 /// Merge multi-line records from a range of strings
@@ -59,9 +60,31 @@ where
 
 /// Convert medline record (group of tags) to CSL-JSON item tags
 /// TODO make lazy
-pub fn medline_to_CSL<'a, I>(range: I) -> Vec<CSLValue>
+pub fn medline_to_csl<'a, I>(range: I) -> Result<Vec<CSLValue>, String>
+where
+    I: Iterator<Item = &'a str>,
 {
-    todo!();
+    let mut ret: Vec<CSLValue> = vec!();
+    
+    for row in range {
+        // Format: "XXXX- The quick brown fox jumped..."
+        // where XXXX of length 1-4 and right-padded
+        assert!(row.chars().count() >= 7, "Malformed record");
+        assert!(row.chars().collect::<Vec<char>>()[4] == '-', "Malformed record");
+        // TODO: Change the above to emit warning, and `continue`
+
+        let key = row.chars().take(4).collect::<String>().trim_end().to_string();
+        let value = row.chars().skip(6).collect::<String>();
+
+        let csl = process_tag(key, value)?;
+        match csl {
+            CSLValue::None => {},
+            CSLValue::CSLOrdinaryField(_) => ret.push(csl),
+            CSLValue::CSLNameField(_) => ret.push(csl),
+            CSLValue::CSLDateField(_) => ret.push(csl),
+        };
+    }
+    Ok(ret)
 }
 
 /// Merge author records when both FAU and AU appear for same author
