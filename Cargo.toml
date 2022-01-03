@@ -3,5 +3,10 @@ name = "nbib"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
+authors = ["James S. Blachly, MD <james.blachly@gmail.com>"]
+repository = "https://github.com/blachlylab/nbib-rs/"
+categories = ["parsing", "science"]
+description = "MEDLINE/Pubmed .nbib format to CSL-JSON conversion"
+readme = "README.md"
 
 [dependencies]
