@@ -50,7 +50,7 @@ where
 
     // Now, buf may be empty if the last row was the end of a multi-line record (unlikely)
     // but to be safe we must test it is nonempty before finally dumping it to ret
-    if buf.len() == 0 {
+    if buf.is_empty() {
         // noop
     } else if buf.len() == 1 {
         ret.push(buf.pop().unwrap());

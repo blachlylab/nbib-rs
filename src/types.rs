@@ -51,9 +51,9 @@ impl CSLValue {
     pub fn np(&self) -> Option<&NameParts> {
         match self {
             Self::None => None,
-            Self::CSLOrdinaryField(v) => None,
+            Self::CSLOrdinaryField(_) => None,
             Self::CSLNameField(v) => Some(&v.np),
-            Self::CSLDateField(v) => None,
+            Self::CSLDateField(_) => None,
         }
     }
 }
@@ -83,7 +83,7 @@ pub struct CSLNameField {
 impl CSLNameField {
     pub fn with_name(nametype: String, name: String) -> Self {
 
-        let name_parts: Vec<&str> = name.split(",").collect();
+        let name_parts: Vec<&str> = name.split(',').collect();
         let mut np = NameParts::default();
         match name_parts.len() {
             0 => panic!(),
@@ -101,7 +101,7 @@ impl CSLNameField {
 
         CSLNameField {
             key: nametype,
-            full: if name_parts.len() == 2 {true} else {false},
+            full: name_parts.len() == 2,
             np
         }
     }
@@ -147,8 +147,7 @@ pub struct CSLDateField {
 
 impl CSLDateField {
     pub fn with_raw(key: String, raw: String) -> Self {
-        let mut dp = DateParts::default();
-        dp.raw = Some(raw);
+        let dp = DateParts { raw: Some(raw), ..Default::default() };
         CSLDateField{
             key,
             dp
