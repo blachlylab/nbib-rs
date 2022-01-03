@@ -1,6 +1,9 @@
 use crate::tags::*;
 use crate::types::*;
 
+// Bring trait into scope
+//use itertools::Itertools;
+
 /// Merge multi-line records from a range of strings
 /// (Unfortunately, not lazily)
 ///
@@ -64,21 +67,28 @@ pub fn medline_to_csl<'a, I>(range: I) -> Result<Vec<CSLValue>, String>
 where
     I: Iterator<Item = &'a str>,
 {
-    let mut ret: Vec<CSLValue> = vec!();
-    
+    let mut ret: Vec<CSLValue> = vec![];
     for row in range {
         // Format: "XXXX- The quick brown fox jumped..."
         // where XXXX of length 1-4 and right-padded
         assert!(row.chars().count() >= 7, "Malformed record");
-        assert!(row.chars().collect::<Vec<char>>()[4] == '-', "Malformed record");
+        assert!(
+            row.chars().collect::<Vec<char>>()[4] == '-',
+            "Malformed record"
+        );
         // TODO: Change the above to emit warning, and `continue`
 
-        let key = row.chars().take(4).collect::<String>().trim_end().to_string();
+        let key = row
+            .chars()
+            .take(4)
+            .collect::<String>()
+            .trim_end()
+            .to_string();
         let value = row.chars().skip(6).collect::<String>();
 
         let csl = process_tag(key, value)?;
         match csl {
-            CSLValue::None => {},
+            CSLValue::None => {}
             CSLValue::CSLOrdinaryField(_) => ret.push(csl),
             CSLValue::CSLNameField(_) => ret.push(csl),
             CSLValue::CSLDateField(_) => ret.push(csl),
@@ -87,16 +97,46 @@ where
     Ok(ret)
 }
 
+/*
 /// Merge author records when both FAU and AU appear for same author
 /// (or make best effort)
-/// 
+///
 /// Takes a range of CSL tags/values (collectively, a complete record => rec)
 ///
 /// TODO: support multiple types (author, editor)
-pub fn reduce_authors<'a, I>(rec: I) -> ()
-{
-    todo!();
+pub fn reduce_authors<'a, I>(rec: Vec<CSLValue>) -> Vec<CSLValue> {
+    let names_grouped_by_type = rec
+        .iter()
+        .filter(|x| x.is_name())
+        //.cloned()
+        //.collect::<Vec<CSLValue>>()
+        .collect::<Vec<&CSLValue>>()
+        .group_by(|a, b| a.key() == b.key());
+
+    /*    auto reduced = namesGroupedByType
+        .map!(n => n.chunkBy!(
+            (a,b) => a.tryGetMember!"np".family.split(" ")[0] ==
+                     b.tryGetMember!"np".family.split(" ")[0])
+            .map!(y => y.takeOne)
+        ).joiner.joiner;
+    */
+    let mut reduced = names_grouped_by_type
+        .map(|n| n.group_by(
+            |a, b|  a.np().unwrap().family.unwrap().split(" ").nth(0) ==
+                    b.np().unwrap().family.unwrap().split(" ").nth(0))
+
+        );
+    // `reduced` now contains deduplicated names
+
+    let mut no_names = rec.iter().filter(|x| !x.is_name());
+    // D:   return chain(noNames, reduced);
+    no_names.chain(reduced).collect()
+    //no_names.chain(names_grouped_by_type).collect()
+    //no_names.append(&mut reduced);
+
+    //no_names
 }
+*/
 
 #[cfg(test)]
 mod tests {

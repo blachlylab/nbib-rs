@@ -23,7 +23,7 @@ pub struct CSLItem {
 /// We additionally allow None/null as signal for our conversion program taht
 /// either something went wrong or that a tag was ignored in conversion
 /// D: alias CSLValue = Nullable!(CSLOrdinaryField, CSLNameField, CSLDateField);
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum CSLValue {
     None,
     CSLOrdinaryField(CSLOrdinaryField),
@@ -31,8 +31,35 @@ pub enum CSLValue {
     CSLDateField(CSLDateField),
 }
 
+impl CSLValue {
+    pub fn is_name(&self) -> bool {
+        match self {
+            Self::None => false,
+            Self::CSLOrdinaryField(_) => false,
+            Self::CSLNameField(_) => true,
+            Self::CSLDateField(_) => false
+        }
+    }
+    pub fn key(&self) -> Option<&str> {
+        match self {
+            Self::None => None,
+            Self::CSLOrdinaryField(v) => Some(&v.key),
+            Self::CSLNameField(v) => Some(&v.key),
+            Self::CSLDateField(v) => Some(&v.key), 
+        }
+    }
+    pub fn np(&self) -> Option<&NameParts> {
+        match self {
+            Self::None => None,
+            Self::CSLOrdinaryField(v) => None,
+            Self::CSLNameField(v) => Some(&v.np),
+            Self::CSLDateField(v) => None,
+        }
+    }
+}
+
 //#[derive(Serialize)]
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct CSLOrdinaryField {
     pub key: String,
     pub value: String,
@@ -42,7 +69,7 @@ pub struct CSLOrdinaryField {
 /// 
 /// Reference:
 /// https://github.com/citation-style-language/schema/blob/c2142118a0265dfcf7d66aa3328251bedcc66af2/schemas/input/csl-data.json#L463-L498
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct CSLNameField {
     pub key: String,
 
@@ -81,7 +108,7 @@ impl CSLNameField {
 }
 
 /// Embedded in CSLNameField
-#[derive(Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct NameParts {
     pub family: Option<String>,
     
@@ -111,7 +138,7 @@ pub struct NameParts {
 /// 
 /// Reference:
 /// https://github.com/citation-style-language/schema/blob/c2142118a0265dfcf7d66aa3328251bedcc66af2/schemas/input/csl-data.json#L505-L546
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct CSLDateField {
     pub key: String,
 
@@ -129,7 +156,7 @@ impl CSLDateField {
     }
 }
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct DateParts {
     /*
         @serdeKeys("date-parts")
