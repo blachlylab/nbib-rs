@@ -65,7 +65,7 @@ where
 /// TODO make lazy
 pub fn medline_to_csl<'a, I>(range: I) -> Result<Vec<CSLValue>, String>
 where
-    I: Iterator<Item = &'a str>,
+    I: Iterator<Item = String>,
 {
     let mut ret: Vec<CSLValue> = vec![];
     for row in range {
