@@ -4,61 +4,79 @@ use crate::types::*;
 // Bring trait into scope
 //use itertools::Itertools;
 
-/// Merge multi-line records from a range of strings
-/// (Unfortunately, not lazily)
+pub struct MergeMultiline<'a, I>
+where
+    I: Iterator<Item = &'a str>,
+{
+    range: I,
+    buf: Vec<String> // temporary buffer; holds rows that should be concat'd
+}
+
+impl<'a, I: Iterator> Iterator for MergeMultiline<'a, I> 
+where
+    I: Iterator<Item = &'a str>,
+{
+    type Item = String;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        
+                                       // into a single element in `ret`
+
+        while let Some(row) = self.range.next() {
+            assert!(row.chars().count() > 4, "Malformed record of length <= 4");
+            if row.chars().nth(4).unwrap() == '-' && self.buf.is_empty() {
+                // buf ~= row.strip;
+                self.buf.push(row.trim().to_string());
+            } else if row.chars().nth(4).unwrap() == '-' && !self.buf.is_empty() {
+                let ret: String;
+                // New record; buf may contain one or more rows
+                // merge (if applicable) buf and append to ret
+                if self.buf.len() == 1 {
+                    // New record immediately after prior single-line record
+                    ret = self.buf.pop().unwrap();
+                    self.buf.clear();
+                } else {
+                    // New record after prior multi-line record
+                    ret = self.buf.join(" "); // `trim()` removed trailing and leading spaces
+                    self.buf.clear();
+                }
+                // then add current record to buf
+                self.buf.push(row.trim().to_string());
+                return Some(ret)
+            } else if row.chars().nth(4).unwrap() != '-' && !self.buf.is_empty() {
+                // A multi-line continuation
+                //buf ~= row.strip;
+                self.buf.push(row.trim().to_string())
+            } else {
+                panic!("Invalid State");
+            }
+        }
+
+        // Now, buf may be empty if the last row was the end of a multi-line record (unlikely)
+        // but to be safe we must test it is nonempty before finally dumping it to ret
+        if self.buf.is_empty() {
+            // noop
+            return None
+        } else if self.buf.len() == 1 {
+            return Some(self.buf.pop().unwrap())
+        } else {
+            return Some(self.buf.join(" "))
+        }
+    }
+}
+
+/// Merge multi-line records from a range of strings lazily
 ///
 /// For example:
 /// ["AB  - Abstract first line...", "      continued second..."]
 /// would be merged into a single record in the output range
 /// The complete range might look like:
 /// ["PMID- 12345", "TI  - Article title", "AB  - Abstr line 1", "      ...line2", "AU  - Blachly JS"]
-pub fn merge_multiline_items<'a, I>(range: I) -> Vec<String>
+pub fn merge_multiline_items<'a, I>(range: I) -> MergeMultiline<'a, I>
 where
     I: Iterator<Item = &'a str>,
 {
-    let mut ret = vec![];
-    let mut buf: Vec<String> = vec![]; // temporary buffer; holds rows that should be concat'd
-                                       // into a single element in `ret`
-
-    for row in range {
-        assert!(row.chars().count() > 4, "Malformed record of length <= 4");
-        if row.chars().nth(4).unwrap() == '-' && buf.is_empty() {
-            // buf ~= row.strip;
-            buf.push(row.trim().to_string());
-        } else if row.chars().nth(4).unwrap() == '-' && !buf.is_empty() {
-            // New record; buf may contain one or more rows
-            // merge (if applicable) buf and append to ret
-            if buf.len() == 1 {
-                // New record immediately after prior single-line record
-                ret.push(buf.pop().unwrap());
-                buf.clear();
-            } else {
-                // New record after prior multi-line record
-                ret.push(buf.join(" ")); // `trim()` removed trailing and leading spaces
-                buf.clear();
-            }
-            // then add current record to buf
-            buf.push(row.trim().to_string());
-        } else if row.chars().nth(4).unwrap() != '-' && !buf.is_empty() {
-            // A multi-line continuation
-            //buf ~= row.strip;
-            buf.push(row.trim().to_string())
-        } else {
-            panic!("Invalid State");
-        }
-    }
-
-    // Now, buf may be empty if the last row was the end of a multi-line record (unlikely)
-    // but to be safe we must test it is nonempty before finally dumping it to ret
-    if buf.is_empty() {
-        // noop
-    } else if buf.len() == 1 {
-        ret.push(buf.pop().unwrap());
-    } else {
-        ret.push(buf.join(" "));
-    }
-
-    ret
+    MergeMultiline {range: range, buf: vec![]}
 }
 
 /// Convert medline record (group of tags) to CSL-JSON item tags
@@ -156,7 +174,7 @@ mod tests {
             "AU  - Gregory CT",
         ];
 
-        let merged_rec = merge_multiline_items(rec.into_iter());
+        let merged_rec: Vec<String> = merge_multiline_items(rec.into_iter()).collect();
 
         assert_eq!(merged_rec.len(), 7);
         assert_eq!(
