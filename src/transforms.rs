@@ -97,21 +97,21 @@ where
     Ok(ret)
 }
 
-/*
+
 /// Merge author records when both FAU and AU appear for same author
 /// (or make best effort)
 ///
 /// Takes a range of CSL tags/values (collectively, a complete record => rec)
 ///
 /// TODO: support multiple types (author, editor)
-pub fn reduce_authors<'a, I>(rec: Vec<CSLValue>) -> Vec<CSLValue> {
-    let names_grouped_by_type = rec
+pub fn reduce_authors(rec: Vec<CSLValue>) -> Vec<CSLValue> {
+    let names = rec
         .iter()
         .filter(|x| x.is_name())
         //.cloned()
         //.collect::<Vec<CSLValue>>()
-        .collect::<Vec<&CSLValue>>()
-        .group_by(|a, b| a.key() == b.key());
+        .collect::<Vec<&CSLValue>>();
+    let names_grouped_by_type = names.group_by(|a, b| a.key() == b.key());
 
     /*    auto reduced = namesGroupedByType
         .map!(n => n.chunkBy!(
@@ -120,23 +120,23 @@ pub fn reduce_authors<'a, I>(rec: Vec<CSLValue>) -> Vec<CSLValue> {
             .map!(y => y.takeOne)
         ).joiner.joiner;
     */
-    let mut reduced = names_grouped_by_type
+    let reduced = names_grouped_by_type
         .map(|n| n.group_by(
-            |a, b|  a.np().unwrap().family.unwrap().split(" ").nth(0) ==
-                    b.np().unwrap().family.unwrap().split(" ").nth(0))
-
-        );
+            |a, b|  a.np().unwrap().family.as_ref().unwrap().split(" ").nth(0) ==
+                    b.np().unwrap().family.as_ref().unwrap().split(" ").nth(0))
+            .map(|y| y[0])
+        ).flatten();
     // `reduced` now contains deduplicated names
 
-    let mut no_names = rec.iter().filter(|x| !x.is_name());
+    let no_names = rec.iter().filter(|x| !x.is_name());
     // D:   return chain(noNames, reduced);
-    no_names.chain(reduced).collect()
+    no_names.chain(reduced).map(|x| x.clone()).collect()
     //no_names.chain(names_grouped_by_type).collect()
     //no_names.append(&mut reduced);
 
     //no_names
 }
-*/
+
 
 #[cfg(test)]
 mod tests {
@@ -151,15 +151,32 @@ mod tests {
             "      and this is its second line;",
             "      with conclusion.",
             "FAU - Blachly, James S",
+            "AU  - Blachly JS",
             "FAU - Gregory, Charles Thomas",
+            "AU  - Gregory CT",
         ];
 
         let merged_rec = merge_multiline_items(rec.into_iter());
 
-        assert_eq!(merged_rec.len(), 5);
+        assert_eq!(merged_rec.len(), 7);
         assert_eq!(
             merged_rec[2],
             "AB  - This is the abstract's first line and this is its second line; with conclusion."
         );
+
+        let csl = medline_to_csl(merged_rec.into_iter()).unwrap();
+        let names: Vec<&CSLValue> = csl.iter().filter(|x| x.is_name()).collect();
+        assert_eq!(names.len(), 4);
+
+        let reduced = reduce_authors(csl);
+        let names: Vec<&CSLValue> = reduced.iter().filter(|x| x.is_name()).collect();
+    
+        assert_eq!(names.len(), 2);
+        assert_eq!(names[0].key().unwrap(), "author");
+        assert_eq!(names[0].np().unwrap().family, Some(String::from("Blachly")));
+        assert_eq!(names[0].np().unwrap().given, Some(String::from("James S")));
+        assert_eq!(names[1].key().unwrap(), "author");
+        assert_eq!(names[1].np().unwrap().family, Some(String::from("Gregory")));
+        assert_eq!(names[1].np().unwrap().given, Some(String::from("Charles Thomas")));    
     }
 }
