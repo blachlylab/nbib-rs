@@ -165,9 +165,18 @@ mod tests {
         );
 
         let csl = medline_to_csl(merged_rec.into_iter()).unwrap();
+        let names: Vec<&CSLValue> = csl.iter().filter(|x| x.is_name()).collect();
+        assert_eq!(names.len(), 4);
 
         let reduced = reduce_authors(csl);
         let names: Vec<&CSLValue> = reduced.iter().filter(|x| x.is_name()).collect();
+    
         assert_eq!(names.len(), 2);
+        assert_eq!(names[0].key().unwrap(), "author");
+        assert_eq!(names[0].np().unwrap().family, Some(String::from("Blachly")));
+        assert_eq!(names[0].np().unwrap().given, Some(String::from("James S")));
+        assert_eq!(names[1].key().unwrap(), "author");
+        assert_eq!(names[1].np().unwrap().family, Some(String::from("Gregory")));
+        assert_eq!(names[1].np().unwrap().given, Some(String::from("Charles Thomas")));    
     }
 }
