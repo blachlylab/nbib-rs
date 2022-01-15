@@ -151,14 +151,14 @@ mod tests {
             "      and this is its second line;",
             "      with conclusion.",
             "FAU - Blachly, James S",
-            "AU - Blachly JS",
+            "AU  - Blachly JS",
             "FAU - Gregory, Charles Thomas",
-            "AU - Gregory CT",
+            "AU  - Gregory CT",
         ];
 
         let merged_rec = merge_multiline_items(rec.into_iter());
 
-        assert_eq!(merged_rec.len(), 5);
+        assert_eq!(merged_rec.len(), 7);
         assert_eq!(
             merged_rec[2],
             "AB  - This is the abstract's first line and this is its second line; with conclusion."
