@@ -188,7 +188,7 @@ mod tests {
         let names: Vec<CSLValue> = csl.map(|x| x.unwrap()).filter(|x| x.is_name()).collect();
         assert_eq!(names.len(), 4);
 
-        let merged_rec: Vec<String> = merge_multiline_items(rec.into_iter()).collect();
+        let merged_rec = merge_multiline_items(rec.into_iter());
 
         let reduced = reduce_authors(medline_to_csl(merged_rec.into_iter()).map(|x| x.unwrap()));
         let names: Vec<CSLValue> = reduced.filter(|x| x.is_name()).collect();
