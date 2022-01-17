@@ -1,10 +1,10 @@
 //! Direct port of https://github.com/blachlylab/nbib/
 
-#![feature(slice_group_by)]
 
 mod tags;
 mod transforms;
 mod types;
+mod groupby;
 
 pub fn transmogrify(mut input: impl std::io::Read) -> Result<String, ()>
 {
@@ -23,9 +23,9 @@ pub fn transmogrify(mut input: impl std::io::Read) -> Result<String, ()>
 
     let e = d.map(transforms::medline_to_csl);
 
-    // let f = e.map(transforms::reduce_authors);
+    let f = e.map(|x| x.map(|y| y.unwrap())).map(transforms::reduce_authors);
 
-    println!("{:?}", e);
+    println!("{:?}", f.map(|x| x.collect::<Vec<types::CSLValue>>()).collect::<Vec<Vec<types::CSLValue>>>());
     Ok("Sorry, Not Finished".into())
 }
 
