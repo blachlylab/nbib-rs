@@ -2,18 +2,24 @@
 
 MEDLINE/Pubmed .nbib format to CSL-JSON conversion 
 
+## Dependencies
+
+None ✅
+
 ## Status
 
-Unstable and WIP
+API should be considered unstable, but all individual components are functional
 
-(but all components functional except for `reduce_authors`)
+`transmogrify` as an end-to-end conversion pipeline is WIP.
 
 ## Panics
 
 There are some residual `unwrap()` calls scattered throughtout that I'll work to remove.
 
-No unsafe code.
+No unsafe code. ✅
 
 ## Caveats
 
-Needs nightly rust for feature gate `#![feature(slice_group_by)]`
+?
+
+(No longer needs nightly rust for feature gate `#![feature(slice_group_by)]`)

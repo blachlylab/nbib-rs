@@ -1,6 +1,6 @@
 [package]
 name = "nbib"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "MIT"
 authors = ["James S. Blachly, MD <james.blachly@gmail.com>", "Charles Thomas Gregory <charles.gregory940@topper.wku.edu>"]
