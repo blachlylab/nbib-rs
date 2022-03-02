@@ -5,7 +5,7 @@ edition = "2021"
 license = "MIT"
 authors = ["James S. Blachly, MD <james.blachly@gmail.com>", "Charles Thomas Gregory <charles.gregory940@topper.wku.edu>"]
 repository = "https://github.com/blachlylab/nbib-rs/"
-categories = ["parsing", "science"]
+categories = ["parser-implementations", "science"]
 description = "MEDLINE/Pubmed .nbib format to CSL-JSON conversion"
 readme = "README.md"
 
