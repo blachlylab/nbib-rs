@@ -1,4 +1,4 @@
-
+use std::fmt::Debug;
 /// GroupBy Iterator Object
 pub struct GroupBy<I, P>
 where
@@ -26,7 +26,8 @@ where
 impl<I, P> Iterator for GroupBy<I, P> 
 where
     I: Iterator,
-    P: FnMut(&I::Item, &I::Item) -> bool
+    P: FnMut(&I::Item, &I::Item) -> bool,
+    I::Item: Debug,
 {
     type Item = std::vec::IntoIter::<I::Item>;
 

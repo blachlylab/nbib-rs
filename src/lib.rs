@@ -1,15 +1,15 @@
 //! Direct port of https://github.com/blachlylab/nbib/
-
+use std::io::{self, prelude::*, BufReader};
 
 mod tags;
 mod transforms;
 mod types;
 mod groupby;
 
-pub fn transmogrify(mut input: impl std::io::Read) -> Result<String, ()>
+pub fn nbib_to_csl(mut input: impl std::io::Read) -> Result<String, String>
 {
     let mut buf = String::new();
-    input.read_to_string(&mut buf).map_err(|_| ())?;
+    input.read_to_string(&mut buf).map_err(|e|e.to_string())?;
     let a: Vec<&str> = buf.lines()
         //.map(|l| l.trim_end())
         .collect();
@@ -25,8 +25,9 @@ pub fn transmogrify(mut input: impl std::io::Read) -> Result<String, ()>
 
     let f = e.map(|x| x.map(|y| y.unwrap())).map(transforms::reduce_authors);
 
-    println!("{:?}", f.map(|x| x.collect::<Vec<types::CSLValue>>()).collect::<Vec<Vec<types::CSLValue>>>());
-    Ok("Sorry, Not Finished".into())
+    // println!("{:?}", f.map(|x| x.collect::<Vec<types::CSLValue>>()).collect::<Vec<Vec<types::CSLValue>>>());
+    Ok(serde_json::to_string(&transforms::to_json(f).map_err(|e|e.to_string())?).map_err(|e|e.to_string())?)
+    // Ok("".to_string())
 }
 
 #[cfg(test)]
@@ -43,6 +44,40 @@ AB  - This is the abstract's first line
 FAU - Blachly, James S
 FAU - Gregory, Charles Thomas"#);
 
-        transmogrify(input.as_bytes());
+let expected = r#"
+[
+    {
+        "abstract":"This is the abstract's first line and this is its second line; with conclusion.",
+        "author":[
+            {
+                "family":"Blachly",
+                "given":"James S"
+            },
+            {
+                "family":"Gregory",
+                "given":"Charles Thomas"
+            }
+        ],
+        "id":"nbib-16023367964268412416",
+        "note":"PMID: 12345"
+    }
+]"#;
+        let e_json: serde_json::Value = serde_json::from_str(expected).unwrap();
+        assert!(nbib_to_csl(input.as_bytes()).unwrap() == serde_json::to_string(&e_json).unwrap());
+    }
+
+    
+    #[test]
+    fn real_cite() {
+        use std::fs::File;
+        use std::io::BufReader;
+        use std::path::PathBuf;
+        let dir = env!("CARGO_MANIFEST_DIR");
+        let f = File::open(PathBuf::from(dir).join("tests").join("fade.nbib")).unwrap();
+        let e_f = File::open(PathBuf::from(dir).join("tests").join("fade.json")).unwrap();
+        let exp = BufReader::new(e_f).lines().map(|x| x.unwrap()).collect::<Vec<String>>().join("");
+        let e_json: serde_json::Value = serde_json::from_str(&exp).unwrap();
+        assert!(nbib_to_csl(f).unwrap() == serde_json::to_string(&e_json).unwrap());
     }
 }
+

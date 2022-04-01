@@ -1,3 +1,7 @@
+use serde::Serialize;
+use serde::ser::{Serializer, SerializeSeq, SerializeMap};
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 /// CSL item record
 ///
 /// Tags and values are stored in one of three arrays, according to whether they are ordinary, name, or date.
@@ -11,10 +15,65 @@
 ///
 /// Reference: https://citeproc-js.readthedocs.io/en/latest/csl-json/markup.html
 /// Reference: https://github.com/citation-style-language/schema/blob/master/schemas/input/csl-data.json
+#[derive(Hash)]
 pub struct CSLItem {
-    fields: Vec<CSLOrdinaryField>,
-    names: Vec<CSLNameField>,
-    dates: Vec<CSLDateField>,
+    pub fields: Vec<CSLOrdinaryField>,
+    pub names: Vec<CSLNameField>,
+    pub dates: Vec<CSLDateField>,
+}
+
+impl CSLItem {
+    pub fn new() -> Self {
+        Self {
+            fields: Vec::new(),
+            names: Vec::new(),
+            dates: Vec::new()
+        }
+    }
+    fn calculate_id(&self) -> u64 {
+        let mut s = DefaultHasher::new();
+        self.hash(&mut s);
+        s.finish()
+    }
+
+    fn name_types(&self) -> Vec<&str> {
+        let mut names: Vec<&str> = self.names.iter()
+            .map(|x| x.key.as_ref())
+            .collect();
+        names.sort();
+        names.dedup();
+        names
+    }
+}
+
+impl Serialize for CSLItem {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut map = serializer.serialize_map(None)?;
+        map.serialize_entry("id", &format!("nbib-{}", self.calculate_id()))?;
+        for f in &self.fields {
+            if f.key == "id" {
+                continue;    // already injected id
+            }
+            //serializer.putKey(f.key);
+            //serializer.putValue(f.value);
+            map.serialize_entry(&f.key, &f.value)?;
+        }
+        let types = self.name_types();
+        for t in types {
+            let matchingNames = self.names.iter()
+                .filter(|a| a.key == t)
+                .map(|n| &n.np)
+                .collect::<Vec<&NameParts>>();
+            map.serialize_entry(t, &matchingNames)?;
+        }
+        for d in &self.dates {
+            map.serialize_entry(&d.key, &d.dp)?;
+        }
+        map.end()
+    }
 }
 
 /// CSL-JSON value
@@ -59,7 +118,7 @@ impl CSLValue {
 }
 
 //#[derive(Serialize)]
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Hash)]
 pub struct CSLOrdinaryField {
     pub key: String,
     pub value: String,
@@ -69,7 +128,7 @@ pub struct CSLOrdinaryField {
 /// 
 /// Reference:
 /// https://github.com/citation-style-language/schema/blob/c2142118a0265dfcf7d66aa3328251bedcc66af2/schemas/input/csl-data.json#L463-L498
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Hash)]
 pub struct CSLNameField {
     pub key: String,
 
@@ -108,29 +167,38 @@ impl CSLNameField {
 }
 
 /// Embedded in CSLNameField
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Hash)]
 pub struct NameParts {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub family: Option<String>,
-    
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub given: Option<String>,
     
-    // @serdeKeys("dropping-particle")
+    #[serde(rename = "dropping-particle")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub dropping_particle: Option<String>,
     
-    // @serdeKeys("non-dropping-particle")
+    #[serde(rename = "non-dropping-particle")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub non_dropping_particle: Option<String>,
     
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub suffix: Option<String>,
 
-    //         @serdeKeys("comma-suffix")
+    #[serde(rename = "comma-suffix")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub comma_suffix: Option<String>,
 
-    //         @serdeKeys("static-ordering")
+    #[serde(rename = "static-ordering")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub static_ordering: Option<String>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub literal: Option<String>,
 
-    //        @serdeKeys("parse-names")
+    #[serde(rename = "parse-names")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub parse_names: Option<String>,
 }
 
@@ -138,7 +206,7 @@ pub struct NameParts {
 /// 
 /// Reference:
 /// https://github.com/citation-style-language/schema/blob/c2142118a0265dfcf7d66aa3328251bedcc66af2/schemas/input/csl-data.json#L505-L546
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Hash)]
 pub struct CSLDateField {
     pub key: String,
 
@@ -155,32 +223,18 @@ impl CSLDateField {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Hash)]
 pub struct DateParts {
-    /*
-        @serdeKeys("date-parts")
-        @serdeIgnoreOutIf!empty
-        string date_parts;
-
-        @serdeIgnoreOutIf!empty
-        string season;
-
-        @serdeIgnoreOutIf!empty
-        string circa;   // string, number, bool
-
-        @serdeIgnoreOutIf!empty
-        string literal;
-
-        @serdeIgnoreOutIf!empty
-        string raw;
-
-        @serdeIgnoreOutIf!empty
-        string edtf;
-    */
+    #[serde(skip_serializing_if = "Option::is_none")]
     date_parts: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     season: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     circa: Option<String>,  // String, number, bool
+    #[serde(skip_serializing_if = "Option::is_none")]
     literal: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     raw: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     edtf: Option<String>,
 }

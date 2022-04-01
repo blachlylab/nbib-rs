@@ -1,0 +1,49 @@
+[
+    {
+        "DOI":"10.1093/nargab/lqaa070 ",
+        "abstract":"High-throughput short-read sequencing relies on fragmented DNA for optimal sampling of input nucleic acid. Several vendors now offer proprietary enzyme cocktails as a cheaper and more streamlined method of fragmentation when compared to acoustic shearing. We have discovered that these enzymes induce the formation of library molecules containing regions of nearby DNA from opposite strands. Sequencing reads derived from these molecules can lead to artifact-derived variant calls appearing at variant allele frequencies <5%. We present Fragmentation Artifact Detection and Elimination (FADE), software to remove these artifacts from mapped reads and mitigate artifact-related effects on downstream analysis. We find that the artifacts principally affect downstream analyses that are sensitive to a 1-3% artifact bias in the sequencing reads, such as targeted resequencing and rare variant discovery.",
+        "author":[
+            {
+                "family":"Gregory",
+                "given":"Thomas"
+            },
+            {
+                "family":"Ngankeu",
+                "given":"Apollinaire"
+            },
+            {
+                "family":"Orwick",
+                "given":"Shelley"
+            },
+            {
+                "family":"Kautto",
+                "given":"Esko A"
+            },
+            {
+                "family":"Woyach",
+                "given":"Jennifer A"
+            },
+            {
+                "family":"Byrd",
+                "given":"John C"
+            },
+            {
+                "family":"Blachly",
+                "given":"James S"
+            }
+        ],
+        "container-title":"NAR genomics and bioinformatics",
+        "container-title-short":"NAR Genom Bioinform",
+        "id":"nbib-4372468838473877266",
+        "issue":"4",
+        "issued":{
+            "raw":"2020 Dec"
+        },
+        "language":"eng",
+        "note":"PMCID: PMC7531576",
+        "page":"lqaa070",
+        "title":"Characterization and mitigation of fragmentation enzyme-induced dual stranded artifacts.",
+        "type":"article-journal",
+        "volume":"2"
+    }
+]

@@ -1,6 +1,7 @@
 use crate::tags::*;
 use crate::types::*;
 use super::groupby::GroupByItr;
+use serde_json::Value;
 
 pub struct MergeMultiline<'a, I>
 where
@@ -58,7 +59,9 @@ where
         } else if self.buf.len() == 1 {
             return Some(self.buf.pop().unwrap())
         } else {
-            return Some(self.buf.join(" "))
+            let ret = self.buf.join(" ");
+            self.buf.clear();
+            return Some(ret)
         }
     }
 }
@@ -147,15 +150,36 @@ where
     let reduced = grouped_by_family.map(|x| x.map(|y| y.into_iter().nth(0).unwrap()));
     let reduced = reduced.flatten();
     // `reduced` now contains deduplicated names
-
-    // let no_names = rec.iter().filter(|x| !x.is_name());
-    // D:   return chain(noNames, reduced);
-    reduced//.map(|x| x.clone()).collect()
-    //no_names.chain(names_grouped_by_type).collect()
-    //no_names.append(&mut reduced);
-
-    //no_names
+    reduced
 }
+
+/// Convert range of records (where each record is a range of tags)
+/// to `asdf` (a binary JSON-like representation), which can then
+/// be serialized out to (non-pretty-printed) JSON
+pub fn to_json<I,T>(range: I) -> Result<Value, String>
+where
+    T: Iterator<Item = CSLValue>,
+    I: Iterator<Item = T>,
+{
+    let mut items = Vec::<Value>::new();
+    for rec in range {
+        let mut item = CSLItem::new();
+
+        // Load the CSLItem by field type
+        for v in rec {
+            match v {
+            CSLValue::None => (),
+            CSLValue::CSLOrdinaryField(x) => item.fields.push(x),
+            CSLValue::CSLNameField(x) => item.names.push(x),
+            CSLValue::CSLDateField(x) => item.dates.push(x)
+            }
+        }
+        items.push(serde_json::to_value(item).map_err(|e| e.to_string())?);
+    }
+
+    return serde_json::to_value(items).map_err(|e| e.to_string());
+}
+
 
 
 #[cfg(test)]
@@ -202,3 +226,4 @@ mod tests {
         assert_eq!(names[1].np().unwrap().given, Some(String::from("Charles Thomas")));    
     }
 }
+
