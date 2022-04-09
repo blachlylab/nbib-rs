@@ -88,11 +88,12 @@ where
     range.map(|row|{
         // Format: "XXXX- The quick brown fox jumped..."
         // where XXXX of length 1-4 and right-padded
-        assert!(row.chars().count() >= 7, "Malformed record");
-        assert!(
-            row.chars().collect::<Vec<char>>()[4] == '-',
-            "Malformed record"
-        );
+        if row.chars().count() < 7 {
+            return Err("Malformed record (char < 7)".to_string());
+        }
+        if row.chars().nth(4).unwrap() != '-' {
+            return Err("Malformed record (5th char not '-')".to_string());
+        }
         // TODO: Change the above to emit warning, and `continue`
 
         let key = row
@@ -154,15 +155,13 @@ where
 }
 
 /// Convert range of records (where each record is a range of tags)
-/// to `asdf` (a binary JSON-like representation), which can then
-/// be serialized out to (non-pretty-printed) JSON
-pub fn to_json<I,T>(range: I) -> Result<Value, String>
+/// to CSLItems which can then be serialized out to (non-pretty-printed) JSON
+pub fn into_csl_items<I,T>(range: I) -> impl Iterator<Item = CSLItem>
 where
     T: Iterator<Item = CSLValue>,
     I: Iterator<Item = T>,
 {
-    let mut items = Vec::<Value>::new();
-    for rec in range {
+    range.map(|rec| {
         let mut item = CSLItem::new();
 
         // Load the CSLItem by field type
@@ -174,9 +173,22 @@ where
             CSLValue::CSLDateField(x) => item.dates.push(x)
             }
         }
+        item
+    })
+}
+
+
+/// Convert range of records (where each record is a range of tags)
+/// to `asdf` (a binary JSON-like representation), which can then
+/// be serialized out to (non-pretty-printed) JSON
+pub fn to_json<I>(range: I) -> Result<Value, String>
+where
+    I: Iterator<Item = CSLItem>,
+{
+    let mut items = Vec::<Value>::new();
+    for item in range {
         items.push(serde_json::to_value(item).map_err(|e| e.to_string())?);
     }
-
     return serde_json::to_value(items).map_err(|e| e.to_string());
 }
 

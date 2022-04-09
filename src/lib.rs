@@ -1,34 +1,51 @@
 //! Direct port of https://github.com/blachlylab/nbib/
 use std::io::{self, prelude::*, BufReader};
 
-mod tags;
-mod transforms;
-mod types;
+pub mod tags;
+pub mod transforms;
+pub mod types;
 mod groupby;
 
-pub fn nbib_to_csl(mut input: impl std::io::Read) -> Result<String, String>
+pub fn nbib_to_csl_items(mut input: impl std::io::Read) -> Result<Vec<types::CSLItem>, String>
 {
     let mut buf = String::new();
-    input.read_to_string(&mut buf).map_err(|e|e.to_string())?;
-    let a: Vec<&str> = buf.lines()
-        //.map(|l| l.trim_end())
-        .collect();
+    input.read_to_string(&mut buf).map_err(|e| e.to_string())?;
+    let range = buf.lines()
+        .collect::<Vec<&str>>()
+        .split(|line| *line == "") // an iterator over groups of lines
+        .map(|sl| sl.iter().cloned())  // iterator over iterator
+        .map(transforms::merge_multiline_items)
+        .map(|x| x.into_iter())
+        .map(transforms::medline_to_csl)
+        .map(|x| x.collect::<Result<Vec<types::CSLValue>, String>>())
+        .collect::<Result<Vec<Vec<types::CSLValue>>, String>>()?;
+    let range = range.into_iter().map(|x| transforms::reduce_authors(x.into_iter()));
 
-    let _b: Vec<&[&str]> = a.split(|line| *line == "").collect();    // Vec of groups (slice) of lines
-    let b = a.split(|line| *line == ""); // an iterator over groups of lines
-
-    let c = b.map(|sl| sl.iter().cloned());  // iterator over iterator
-
-    let d = c.map(transforms::merge_multiline_items).map(|x| x.into_iter());
-
-    let e = d.map(transforms::medline_to_csl);
-
-    let f = e.map(|x| x.map(|y| y.unwrap())).map(transforms::reduce_authors);
-
-    // println!("{:?}", f.map(|x| x.collect::<Vec<types::CSLValue>>()).collect::<Vec<Vec<types::CSLValue>>>());
-    Ok(serde_json::to_string(&transforms::to_json(f).map_err(|e|e.to_string())?).map_err(|e|e.to_string())?)
-    // Ok("".to_string())
+    Ok(transforms::into_csl_items(range).collect())
 }
+
+
+pub fn nbib_to_csljson(mut input: impl std::io::Read) -> Result<String, String>
+{
+    let mut buf = String::new();
+    input.read_to_string(&mut buf).map_err(|e| e.to_string())?;
+    let range = buf.lines()
+        .collect::<Vec<&str>>()
+        .split(|line| *line == "") // an iterator over groups of lines
+        .map(|sl| sl.iter().cloned())  // iterator over iterator
+        .map(transforms::merge_multiline_items)
+        .map(|x| x.into_iter())
+        .map(transforms::medline_to_csl)
+        .map(|x| x.collect::<Result<Vec<types::CSLValue>, String>>())
+        .collect::<Result<Vec<Vec<types::CSLValue>>, String>>()?;
+    let range = range.into_iter().map(|x| transforms::reduce_authors(x.into_iter()));
+    let range = transforms::into_csl_items(range);
+    
+    serde_json::to_string(
+        &transforms::to_json(range).map_err(|e|e.to_string())?
+    ).map_err(|e|e.to_string())
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -63,7 +80,7 @@ let expected = r#"
     }
 ]"#;
         let e_json: serde_json::Value = serde_json::from_str(expected).unwrap();
-        assert!(nbib_to_csl(input.as_bytes()).unwrap() == serde_json::to_string(&e_json).unwrap());
+        assert!(nbib_to_csljson(input.as_bytes()).unwrap() == serde_json::to_string(&e_json).unwrap());
     }
 
     
@@ -77,7 +94,7 @@ let expected = r#"
         let e_f = File::open(PathBuf::from(dir).join("tests").join("fade.json")).unwrap();
         let exp = BufReader::new(e_f).lines().map(|x| x.unwrap()).collect::<Vec<String>>().join("");
         let e_json: serde_json::Value = serde_json::from_str(&exp).unwrap();
-        assert!(nbib_to_csl(f).unwrap() == serde_json::to_string(&e_json).unwrap());
+        assert!(nbib_to_csljson(f).unwrap() == serde_json::to_string(&e_json).unwrap());
     }
 }
 
